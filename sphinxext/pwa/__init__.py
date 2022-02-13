@@ -1,105 +1,130 @@
+import sphinx as Sphinx
 from typing import Any, Dict, List
 import os
-from pathlib import Path
-
-import docutils.nodes as nodes
-from sphinx.application import Sphinx
-
+from docutils import nodes
+import json
+import shutil
+from urllib.parse import urljoin, urlparse, urlunparse
 from sphinx.util import logging
+from sphinx.util.console import green, red, yellow  # pylint: disable=no-name-in-module
 
-EXCLUDE_CACHE = ["_sources", ".inv", ".buildinfo"]
+manifest = {
+    "name": "",
+    "short_name": "",
+    "theme_color": "",
+    "background_color": "",
+    "display": "standalone",
+    "scope": "/",
+    "start_url": "/index.html",
+    "icons": [],
+}
+
+logger = logging.getLogger(__name__)
 
 
-def get_file_list(path: str) -> List[str]:
-    def get_files_recursive(path: str) -> List[str]:
-        file_list = []
-        for entry in os.scandir(path):
-            if entry.is_dir():
-                file_list.extend(get_files_recursive(entry.path))
+def get_files_to_cache(outDir: str, config: Dict[str, Any]):
+    files_to_cache = []
+    for (dirpath, dirname, filenames) in os.walk(outDir):
+        dirpath = dirpath.split(outDir)[1]
+
+        # skip adding sources to cache
+        if os.sep + "_sources" + os.sep in dirpath:
+            continue
+
+        # add files to cache
+        for name in filenames:
+            if "sw.js" in name:
+                continue
+
+            dirpath = dirpath.replace("\\", "/")
+            dirpath = dirpath.lstrip("/")
+
+            # we have to use absolute urls in our cache resource, because fetch will return an absolute url
+            # this means that we cannot accurately cache resources that are in PRs because RTD does not give us
+            # the url
+            if config["html_baseurl"] is not None:
+                # readthedocs uses html_baseurl for sphinx > 1.8
+                parse_result = urlparse(config["html_baseurl"])
+
+                # Grab root url from canonical url
+                url = parse_result.netloc
+
+                # enables RTD multilanguage support
+                if os.getenv("READTHEDOCS"):
+                    url = (
+                        "https://"
+                        + url
+                        + "/"
+                        + os.getenv("READTHEDOCS_LANGUAGE")
+                        + "/"
+                        + os.getenv("READTHEDOCS_VERSION")
+                        + "/"
+                    )
+
+            if config["html_baseurl"] is None and not os.getenv("CI"):
+                logger.warning(
+                    red(
+                        f"html_baseurl is not configured. This can be ignored if deployed in RTD environments."
+                    )
+                )
+                url = ""
+
+            if dirpath == "":
+                resource_url = urljoin(url, name)
+                files_to_cache.append(resource_url)
             else:
-                file_list.append(entry.path)
-        return file_list
+                resource_url = url + dirpath + "/" + name
+                files_to_cache.append(resource_url)
 
-    files = get_files_recursive(path)
+    return files_to_cache
 
-    # alternate version without walrus operator
-    #file_list = []
-    #for file in files:
-    #    f = str(Path(file).relative_to(path))
-    #    if not any(exclude in f for exclude in EXCLUDE_CACHE):
-    #        file_list.append(f)
 
-    return [f for file in files if not any(exclude in (f := str(Path(file).relative_to(path))) for exclude in EXCLUDE_CACHE)]
+def build_finished(app: Sphinx, exception: Exception):
+    outDir = app.outdir
+    outDirStatic = outDir + os.sep + "_static" + os.sep
+    files_to_cache = get_files_to_cache(outDir, app.config)
+
+    # dumps a json file with our cache
+    with open(outDirStatic + "cache.json", "w") as f:
+        json.dump(files_to_cache, f)
+
+    # copies over our service worker
+    shutil.copyfile(
+        os.path.dirname(__file__) + os.sep + "pwa_service_files" + os.sep + "sw.js",
+        outDir + os.sep + "sw.js",
+    )
 
 
 def html_page_context(
-        app: Sphinx,
-        pagename: str,
-        templatename: str,
-        context: Dict[str, Any],
-        doctree: nodes.document,
+    app: Sphinx,
+    pagename: str,
+    templatename: str,
+    context: Dict[str, Any],
+    doctree: nodes.document,
 ) -> None:
-    app.add_js_file(None, body="\"serviceWorker\"in navigator&&navigator.serviceWorker.register(\"sw.js\");", loading_method="defer")
-    if doctree:
-        context["metatags"] += f'<link rel="manifest" href="test-proj.webmanifest"/>'
+    if pagename == "index":
+        context[
+            "metatags"
+        ] += '<script>"serviceWorker"in navigator&&navigator.serviceWorker.register("sw.js").catch((e) => window.alert(e));</script>'
+        context[
+            "metatags"
+        ] += f'<link rel="manifest" href="_static/frcdocs.webmanifest"/>'
 
-
-def build_finished(
-        app: Sphinx,
-        exc: Exception
-) -> None:
-    logger = logging.getLogger(__name__)
-    logger.info(app.outdir)
-    file_list = get_file_list(app.outdir)
-    sw = """self.addEventListener('install', function(e) {
-    e.waitUntil(
-        caches.open('frc-docs').then(function(cache) {
-            return cache.addAll([
-                """+"'"+"',\n'".join(file_list)+"'"+"""
-            ]);
-        })
-    );
-});
-
-self.addEventListener('fetch', function(event) {
-    event.respondWith(
-        caches.match(event.request).then(function(response) {
-            return response || fetch(event.request);
-        })
-    );
-});"""
-    with open(Path(app.outdir) / "sw.js", 'w') as sw_file:
-        sw_file.write(sw)
-
-    manifest = """{
-  "name": "Test",
-  "short_name": "Test",
-  "theme_color": "#003974",
-  "background_color": "#003974",
-  "display": "standalone",
-  "scope": "/",
-  "start_url": "/index.html",
-  "icons": [
-  {
-    "src": "/_static/first-logo-256px.png",
-    "type": "image/png",
-    "sizes": "256x256"
-  },
-  {
-    "src": "/_static/first-logo-512px.png",
-    "type": "image/png",
-    "sizes": "512x512"
-  }
-  ]
-}
-
-    """
-
-    with open(Path(app.outdir) / "test-proj.webmanifest", 'w') as manifest_file:
-        manifest_file.write(manifest)
+        if app.config["pwa_apple_icon"] is not None:
+            context[
+                "metatags"
+            ] += f'<link rel="apple-touch-icon" href="{app.config["pwa_apple_icon"]}">'
 
 
 def setup(app: Sphinx) -> Dict[str, Any]:
+    app.add_config_value("pwa_name", "", "html")
+    app.add_config_value("pwa_short_name", "", "html")
+    app.add_config_value("pwa_theme_color", "", "html")
+    app.add_config_value("pwa_background_color", "", "html")
+    app.add_config_value("pwa_display", "standalone", "html")
+    app.add_config_value("pwa_icons", [], "html")
+    app.add_config_value("pwa_apple_icon", "", "html")
+
     app.connect("html-page-context", html_page_context)
     app.connect("build-finished", build_finished)
 
