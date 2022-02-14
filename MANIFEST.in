@@ -1,1 +1,1 @@
-recursive-include *.js
+include sphinxext/pwa/pwa_service_files/sw.js
