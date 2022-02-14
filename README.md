@@ -52,10 +52,10 @@ PWAs have *a lot* of configuration. For details on accepted inputs, see [the Moz
 
 **Supported Browsers:** Chrome (Desktop & Mobile), Firefox (Mobile), Safari (iOS). Only the standard, non-beta, non-light versions of these browsers are supported.
 
-**Supported OSes:** iOS >= 15. Android >= 6.
+**Supported OSes:** iOS >= 15, iOS 10-14 (excluding 14.1 due to a indexedDB bug) should also work. Android >= 6.
 
-**Installation Time for Offline to Work**: It depends on the website, but a 160MB application takes on average 15 minutes to enable offline support.
+**Installation Time for Offline to Work**: It depends on the website, but a 160MB application takes on average 15 minutes to enable offline support. This also changes depending on the device specific implementation.
 
 **Push Updates**: Because the cache is unique with every deploy, this initializes a redeploy of the entire cache.
 
-**Cache Timeouts**: iOS PWAs will get their cache purged after 7 days of inactivity. Additionally, whenever the user clears their browser cache, it will purge the assets. It is undetermined at this time if it will retrigger the download of the entire cache.
+**Cache Timeouts**: Whenever the user clears their browser cache, it will purge the assets. It is undetermined at this time if it will retrigger the download of the entire cache. Some users have space saving applications that may interfere with this.
