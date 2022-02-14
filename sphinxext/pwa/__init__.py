@@ -116,7 +116,9 @@ def build_finished(app: Sphinx, exception: Exception):
 
     with open(outDir + os.sep + "sw.js", "w") as f:
         for line in service_worker:
-            codegen_service_worker = codegen_service_worker + line.replace("/* CODE-GEN CACHENAME */", cache_name)
+            codegen_service_worker = codegen_service_worker + line.replace(
+                "/* CODE-GEN CACHENAME */", cache_name
+            )
 
         f.write(codegen_service_worker)
 
