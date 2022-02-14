@@ -9,6 +9,13 @@ This technology is highly experimental and volatile. Individuals using this exte
 - excessive battery life drain
 - completely breaking your sphinx website
 
+## Current Issues
+- iOS is not working
+  - iOS lazy loads the `indexeddb` storage. This means `fetch` requests for html files cannot grab `indexeddb`, because `indexeddb` is not open until DOM loads.
+- Resources begin caching on page load
+  - We need a helper script that begins the cache if the detected environment is PWA.
+See [issues](https://github.com/ItayZiv/sphinxext-pwa/issues/) for more information.
+
 ## Introduction
 [Progressive Web Applications](https://developers.google.com/web/updates/2015/12/getting-started-pwa), also known as PWAs, are a fantastic technology that enables seemless integration between websites and mobile devices. It empowers websites with the ability to present itself as a native-style application; complete with notifications and offline support. This extension's goal is to provide a "close as possible" integration between Sphinx and PWAs.
 
