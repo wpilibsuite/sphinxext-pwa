@@ -99,7 +99,7 @@ def build_finished(app: Sphinx, exception: Exception):
     manifest["background_color"] = config["pwa_background_color"]
     manifest["display"] = config["pwa_display"]
 
-    cache_name = "sphinx-app-" + random.randrange(10000, 99999)
+    cache_name = "sphinx-app-" + str(random.randrange(10000, 99999))
 
     # code gen our cache name
     with open(service_worker_path, "wt") as f:
