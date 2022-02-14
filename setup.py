@@ -14,7 +14,7 @@ try:
     )
     version = ret.stdout.decode("utf-8").strip()
 except:
-    version = "main"
+    version = "0.0.1-beta"
 
 with open("README.md", "r", encoding="utf-8") as readme:
     long_description = readme.read()
