@@ -30,6 +30,7 @@ setuptools.setup(
     url="https://github.com/wpilibsuite/sphinxext-pwa",
     install_requires=["sphinx>=2.0"],
     packages=["sphinxext/pwa"],
+    include_package_data=True,
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Plugins",

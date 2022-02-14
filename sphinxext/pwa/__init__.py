@@ -101,10 +101,24 @@ def build_finished(app: Sphinx, exception: Exception):
 
     cache_name = "sphinx-app-" + str(random.randrange(10000, 99999))
 
+    # copies over our service worker
+    shutil.copyfile(
+        service_worker_path,
+        outDir + os.sep + "sw.js",
+    )
+
     # code gen our cache name
-    with open(service_worker_path, "wt") as f:
-        for line in f:
-            f.write(line.replace("/* CODE-GEN CACHENAME */", cache_name))
+    service_worker = []
+    codegen_service_worker = ""
+
+    with open(outDir + os.sep + "sw.js", "r") as f:
+        service_worker = f.readlines()
+
+    with open(outDir + os.sep + "sw.js", "w") as f:
+        for line in service_worker:
+            codegen_service_worker = codegen_service_worker + line.replace("/* CODE-GEN CACHENAME */", cache_name)
+
+        f.write(codegen_service_worker)
 
     # icons is a required manifest attribute
     if config["pwa_icons"] is None:
@@ -112,7 +126,7 @@ def build_finished(app: Sphinx, exception: Exception):
     else:
         icons = []
 
-        for icon in config["icons"]:
+        for icon in config["pwa_icons"]:
             if ".png" in icon[0]:
                 icons.append({"src": icon[0], "type": "image/png", "sizes": icon[1]})
             elif ".jpg" in icon[0] or ".jpeg" in icon[0]:
@@ -133,12 +147,6 @@ def build_finished(app: Sphinx, exception: Exception):
     # dumps a json file with our cache
     with open(outDirStatic + "cache.json", "w") as f:
         json.dump(files_to_cache, f)
-
-    # copies over our service worker
-    shutil.copyfile(
-        service_worker_path,
-        outDir + os.sep + "sw.js",
-    )
 
 
 def html_page_context(
