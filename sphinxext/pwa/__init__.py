@@ -110,7 +110,37 @@ def build_finished(app: Sphinx, exception: Exception):
     if config["pwa_icons"] is None:
         logger.error("Icons is required to be configured!")
     else:
-        manifest["icons"] = config["pwa_icons"]
+        icons = []
+ 
+        for icon in config["icons"]:
+            if ".png" in icon[0]:
+                icons.append(
+                    {
+                        "src": icon[0],
+                        "type": "image/png",
+                        "sizes": icon[1]
+                    }
+                )
+            elif ".jpg" in icon[0] or ".jpeg" in icon[0]:
+                icons.append(
+                    {
+                        "src": icon[0],
+                        "type": "image/jpeg",
+                        "sizes": icon[1]
+                    }
+                )
+            elif ".svg" in icon[0]:
+                icons.append(
+                    {
+                        "src": icon[0],
+                        "type": "image/svg+xml",
+                        "sizes": icon[1]
+                    }
+                )
+            else:
+                logger.error ("Specified image is unrecognized type:", icon[0])
+
+        manifest["icons"] = icons
 
     # dumps our manifest
     with open(outDirStatic + "app.webmanifest", "w") as f:
