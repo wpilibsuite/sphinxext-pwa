@@ -24,10 +24,10 @@ setuptools.setup(
     version=version,
     author="Itay Ziv",
     author_email="itay220204@gmail.com",
-    description="Sphinx Extension to enable OGP support",
+    description="Sphinx Extension to turn Sphinx websites into Progressive Web Applications",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/wpilibsuite/sphinxext-opengraph",
+    url="https://github.com/wpilibsuite/sphinxext-pwa",
     install_requires=["sphinx>=2.0"],
     packages=["sphinxext/pwa"],
     classifiers=[
