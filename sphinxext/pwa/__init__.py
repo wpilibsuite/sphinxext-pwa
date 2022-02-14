@@ -111,34 +111,18 @@ def build_finished(app: Sphinx, exception: Exception):
         logger.error("Icons is required to be configured!")
     else:
         icons = []
- 
+
         for icon in config["icons"]:
             if ".png" in icon[0]:
-                icons.append(
-                    {
-                        "src": icon[0],
-                        "type": "image/png",
-                        "sizes": icon[1]
-                    }
-                )
+                icons.append({"src": icon[0], "type": "image/png", "sizes": icon[1]})
             elif ".jpg" in icon[0] or ".jpeg" in icon[0]:
-                icons.append(
-                    {
-                        "src": icon[0],
-                        "type": "image/jpeg",
-                        "sizes": icon[1]
-                    }
-                )
+                icons.append({"src": icon[0], "type": "image/jpeg", "sizes": icon[1]})
             elif ".svg" in icon[0]:
                 icons.append(
-                    {
-                        "src": icon[0],
-                        "type": "image/svg+xml",
-                        "sizes": icon[1]
-                    }
+                    {"src": icon[0], "type": "image/svg+xml", "sizes": icon[1]}
                 )
             else:
-                logger.error ("Specified image is unrecognized type:", icon[0])
+                logger.error("Specified image is unrecognized type:", icon[0])
 
         manifest["icons"] = icons
 
