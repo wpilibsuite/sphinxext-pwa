@@ -14,8 +14,8 @@ manifest = {
     "theme_color": "",
     "background_color": "",
     "display": "standalone",
-    "scope": "/",
-    "start_url": "/index.html",
+    "scope": "../",
+    "start_url": "../index.html",
     "icons": [],
 }
 
@@ -83,6 +83,24 @@ def build_finished(app: Sphinx, exception: Exception):
     outDir = app.outdir
     outDirStatic = outDir + os.sep + "_static" + os.sep
     files_to_cache = get_files_to_cache(outDir, app.config)
+    config = app.config
+
+    # dumps our webmanifest
+    manifest["name"] = config["pwa_name"]
+    manifest["short_name"] = app.config.project
+    manifest["short_name"] = config["pwa_short_name"]
+    manifest["theme_color"] = config["pwa_theme_color"]
+    manifest["background_color"] = config["pwa_background_color"]
+    manifest["display"] = config["pwa_display"]
+
+    if config["pwa_icons"] is None:
+        logger.error("Icons is required to be configured!")
+    else:
+        manifest["icons"] = config["pwa_icons"]
+
+    # dumps our manifest
+    with open(outDirStatic + "app.webmanifest", "w") as f:
+        json.dump(manifest, f)
 
     # dumps a json file with our cache
     with open(outDirStatic + "cache.json", "w") as f:
@@ -108,7 +126,7 @@ def html_page_context(
         ] += '<script>"serviceWorker"in navigator&&navigator.serviceWorker.register("sw.js").catch((e) => window.alert(e));</script>'
         context[
             "metatags"
-        ] += f'<link rel="manifest" href="_static/frcdocs.webmanifest"/>'
+        ] += f'<link rel="manifest" href="_static/app.webmanifest"/>'
 
         if app.config["pwa_apple_icon"] is not None:
             context[
@@ -117,12 +135,12 @@ def html_page_context(
 
 
 def setup(app: Sphinx) -> Dict[str, Any]:
-    app.add_config_value("pwa_name", "", "html")
-    app.add_config_value("pwa_short_name", "", "html")
+    app.add_config_value("pwa_name", app.config.project, "html")
+    app.add_config_value("pwa_short_name", app.config.project, "html")
     app.add_config_value("pwa_theme_color", "", "html")
     app.add_config_value("pwa_background_color", "", "html")
     app.add_config_value("pwa_display", "standalone", "html")
-    app.add_config_value("pwa_icons", [], "html")
+    app.add_config_value("pwa_icons", None, "html")
     app.add_config_value("pwa_apple_icon", "", "html")
 
     app.connect("html-page-context", html_page_context)
