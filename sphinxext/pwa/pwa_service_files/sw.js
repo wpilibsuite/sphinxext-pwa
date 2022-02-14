@@ -1,9 +1,8 @@
 "use strict";
 // extend this to update the service worker every push
 // https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Offline_Service_workers
-let cacheName = 'js13kPWA-v1';
+let cacheName = "/* CODE-GEN CACHENAME */";
 
-// todo test
 self.addEventListener('install', function (e) {
   e.waitUntil(async function() {
     await fetch('_static/cache.json')
@@ -42,7 +41,7 @@ async function getDB() {
   if (dbPromise) {
     return dbPromise;
   } else {
-    let request = indexedDB.open("frc-docs", "1")
+    let request = indexedDB.open(cacheName, "1")
 
     dbPromise = new Promise((resolve, reject) => {
       request.onsuccess = function (event) {
@@ -62,6 +61,18 @@ async function getDB() {
     });
 
     return dbPromise;
+  }
+}
+
+async function deleteOldDB(name) {
+  let request = indexedDB.deleteDatabase(name)
+
+  request.onerror = function(event) {
+    console.error("Error deleting old database")
+  }
+
+  request.onsuccess = function(event) {
+    console.log("Successfully deleted old database")
   }
 }
 

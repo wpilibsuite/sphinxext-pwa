@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 import os
 from docutils import nodes
 import json
+import random
 import shutil
 from urllib.parse import urljoin, urlparse, urlunparse
 from sphinx.util import logging
@@ -50,6 +51,8 @@ def get_files_to_cache(outDir: str, config: Dict[str, Any]):
                 url = parse_result.netloc
 
                 # enables RTD multilanguage support
+                # manually create the url, because urljoin strips
+                # https and only takes two params
                 if os.getenv("READTHEDOCS"):
                     url = (
                         "https://"
@@ -81,9 +84,10 @@ def get_files_to_cache(outDir: str, config: Dict[str, Any]):
 
 def build_finished(app: Sphinx, exception: Exception):
     outDir = app.outdir
+    config = app.config
     outDirStatic = outDir + os.sep + "_static" + os.sep
     files_to_cache = get_files_to_cache(outDir, app.config)
-    config = app.config
+    service_worker_path = os.path.dirname(__file__) + os.sep + "pwa_service_files" + os.sep + "sw.js"
 
     # dumps our webmanifest
     manifest["name"] = config["pwa_name"]
@@ -93,6 +97,14 @@ def build_finished(app: Sphinx, exception: Exception):
     manifest["background_color"] = config["pwa_background_color"]
     manifest["display"] = config["pwa_display"]
 
+    cache_name = "sphinx-app-" + random.randrange(10000, 99999)
+
+    # code gen our cache name
+    with open(service_worker_path, "wt") as f:
+        for line in f:
+            f.write(line.replace('/* CODE-GEN CACHENAME */', cache_name))
+
+    # icons is a required manifest attribute
     if config["pwa_icons"] is None:
         logger.error("Icons is required to be configured!")
     else:
@@ -108,7 +120,7 @@ def build_finished(app: Sphinx, exception: Exception):
 
     # copies over our service worker
     shutil.copyfile(
-        os.path.dirname(__file__) + os.sep + "pwa_service_files" + os.sep + "sw.js",
+        service_worker_path,
         outDir + os.sep + "sw.js",
     )
 
