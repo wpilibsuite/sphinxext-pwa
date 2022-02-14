@@ -53,6 +53,7 @@ PWAs have *a lot* of configuration. For details on accepted inputs, see [the Moz
 **Supported Browsers:** Chrome (Desktop & Mobile), Firefox (Mobile), Safari (iOS). Only the standard, non-beta, non-light versions of these browsers are supported.
 
 **Supported OSes:** iOS >= 15, Safari versions 10-14.4 (excluding 14.5-14.8 due to a indexedDB bug) should also work. Android >= 6.
+  - Note: iOS is currently not functional due to their implementation of `indexeddb` lazy loading. We are planning to implement a fix for this soon.
 
 **Installation Time for Offline to Work**: It depends on the website, but a 160MB application takes on average 15 minutes to enable offline support. This also changes depending on the device specific implementation.
 
