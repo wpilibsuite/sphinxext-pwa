@@ -87,7 +87,9 @@ def build_finished(app: Sphinx, exception: Exception):
     config = app.config
     outDirStatic = outDir + os.sep + "_static" + os.sep
     files_to_cache = get_files_to_cache(outDir, app.config)
-    service_worker_path = os.path.dirname(__file__) + os.sep + "pwa_service_files" + os.sep + "sw.js"
+    service_worker_path = (
+        os.path.dirname(__file__) + os.sep + "pwa_service_files" + os.sep + "sw.js"
+    )
 
     # dumps our webmanifest
     manifest["name"] = config["pwa_name"]
@@ -102,7 +104,7 @@ def build_finished(app: Sphinx, exception: Exception):
     # code gen our cache name
     with open(service_worker_path, "wt") as f:
         for line in f:
-            f.write(line.replace('/* CODE-GEN CACHENAME */', cache_name))
+            f.write(line.replace("/* CODE-GEN CACHENAME */", cache_name))
 
     # icons is a required manifest attribute
     if config["pwa_icons"] is None:
@@ -136,9 +138,7 @@ def html_page_context(
         context[
             "metatags"
         ] += '<script>"serviceWorker"in navigator&&navigator.serviceWorker.register("sw.js").catch((e) => window.alert(e));</script>'
-        context[
-            "metatags"
-        ] += f'<link rel="manifest" href="_static/app.webmanifest"/>'
+        context["metatags"] += f'<link rel="manifest" href="_static/app.webmanifest"/>'
 
         if app.config["pwa_apple_icon"] is not None:
             context[
