@@ -23,7 +23,7 @@ jobs:
         black --check --exclude /docs --diff .
 
   pypi-release:
-    needs: test-extension
+    needs: check
     runs-on: ubuntu-latest
     if: contains(github.ref, 'refs/tags/') && github.repository_owner	== 'wpilibsuite'
     steps:
