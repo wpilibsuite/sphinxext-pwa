@@ -1,7 +1,7 @@
 "use strict";
 // extend this to update the service worker every push
 // https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Offline_Service_workers
-let cacheName = "/* CODE-GEN CACHENAME */";
+let cacheName = "{{% CACHE-NAME %}}";
 
 self.addEventListener('install', function (e) {
   e.waitUntil(async function() {

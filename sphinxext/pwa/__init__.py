@@ -1,154 +1,110 @@
-import sphinx as Sphinx
+import warnings
 from typing import Any, Dict, List
+from pathlib import Path
+from warnings import warn
+import mimetypes
 import os
-from docutils import nodes
 import json
 import random
-import shutil
+
+from sphinx.application import Sphinx
+from sphinx.errors import ConfigError
+from docutils import nodes
 from urllib.parse import urljoin, urlparse, urlunparse
 from sphinx.util import logging
-from sphinx.util.console import green, red, yellow  # pylint: disable=no-name-in-module
 
-manifest = {
-    "name": "",
-    "short_name": "",
-    "theme_color": "",
-    "background_color": "",
-    "display": "standalone",
-    "scope": "../",
-    "start_url": "../index.html",
-    "icons": [],
-}
 
 logger = logging.getLogger(__name__)
 
 
-def get_files_to_cache(outDir: str, config: Dict[str, Any]):
-    files_to_cache = []
-    for (dirpath, dirname, filenames) in os.walk(outDir):
-        dirpath = dirpath.split(outDir)[1]
+def get_cache(path: str, baseurl: str, exclude: List[str]) -> List[str]:
+    url = baseurl
+    # we have to use absolute urls in our cache resource, because fetch will return an absolute url
+    # this means that we cannot accurately cache resources that are in PRs because RTD does not give us
+    # the url
+    # readthedocs uses html_baseurl for sphinx > 1.8
+    if baseurl is not None:
+        parse_result = urlparse(url)
 
-        # skip adding sources to cache
-        if os.sep + "_sources" + os.sep in dirpath:
-            continue
+        # enables RTD multilanguage support
+        if os.getenv("READTHEDOCS"):
+            parse_result.path = (
+                os.getenv("READTHEDOCS_LANGUAGE")
+                + "/"
+                + os.getenv("READTHEDOCS_VERSION")
+            )
 
-        # add files to cache
-        for name in filenames:
-            if "sw.js" in name:
-                continue
+        url = urlunparse(parse_result)
+    elif baseurl is None:
+        logger.warning(
+            "html_baseurl is not configured. This can be ignored if deployed in RTD environments."
+        )
 
-            dirpath = dirpath.replace("\\", "/")
-            dirpath = dirpath.lstrip("/")
+    def _walk(_path: str) -> List[str]:
+        _file_list = []
+        for entry in os.scandir(_path):
+            rel_path = str(Path(entry.path).relative_to(path))
+            # exclude all files that match exclude
+            if any(e in rel_path for e in exclude):
+                pass
 
-            # we have to use absolute urls in our cache resource, because fetch will return an absolute url
-            # this means that we cannot accurately cache resources that are in PRs because RTD does not give us
-            # the url
-            if config["html_baseurl"] is not None:
-                # readthedocs uses html_baseurl for sphinx > 1.8
-                parse_result = urlparse(config["html_baseurl"])
-
-                # Grab root url from canonical url
-                url = parse_result.netloc
-
-                # enables RTD multilanguage support
-                # manually create the url, because urljoin strips
-                # https and only takes two params
-                if os.getenv("READTHEDOCS"):
-                    url = (
-                        "https://"
-                        + url
-                        + "/"
-                        + os.getenv("READTHEDOCS_LANGUAGE")
-                        + "/"
-                        + os.getenv("READTHEDOCS_VERSION")
-                        + "/"
-                    )
-
-            if config["html_baseurl"] is None and not os.getenv("CI"):
-                logger.warning(
-                    red(
-                        f"html_baseurl is not configured. This can be ignored if deployed in RTD environments."
-                    )
-                )
-                url = ""
-
-            if dirpath == "":
-                resource_url = urljoin(url, name)
-                files_to_cache.append(resource_url)
+            if entry.is_dir():
+                _file_list.extend(_walk(entry.path))
             else:
-                resource_url = url + dirpath + "/" + name
-                files_to_cache.append(resource_url)
+                _file_list.append(urljoin(url, rel_path))
 
-    return files_to_cache
+        return _file_list
+
+    return _walk(path)
+
+
+def get_manifest(config: Dict[str, Any]) -> Dict[str, str]:
+    if config["pwa-icons"] is None:
+        raise ConfigError("Icons are required for PWAs!")
+
+    icons = []
+
+    for path, sizes in config["pwa_icons"]:
+        mime_type = mimetypes.guess_type(path)[0]
+        if mime_type is None:
+            raise ConfigError("Specified image is unrecognized type: " + path)
+        # todo possibly only allow a subset of mime types
+
+        icons.append({"src": path, "type": mime_type, "sizes": sizes})
+
+    return {
+        "name": config["pwa_name"],
+        "short_name": config["pwa_short_name"],
+        "theme_color": config["pwa_theme_color"],
+        "background_color": config["pwa_background_color"],
+        "display": config["pwa_display"],
+        "scope": "../",
+        "start_url": f"../{config['root_doc']}.html",
+        "icons": [],
+    }
+
+
+def generate_files(app: Sphinx, config: Dict[str, Any]) -> None:
+    static_dir = Path(app.outdir, "_static")
+    cache_list = get_cache(app.outdir, config["html_baseurl"], ["_static", "sw.js"])
+    service_worker = (Path(__file__).parent / "pwa_service_files" / "sw.js").read_text()
+
+    logger.info(config["root_doc"])
+
+    service_worker.replace(
+        "{{% CACHE-NAME %}}", "sphinx-app" + str(random.randrange(10000, 100000))
+    )
+
+    with open(static_dir / "app.webmanifest", "w") as f:
+        json.dump(get_manifest(config), f)
+
+    with open(static_dir / "cache.json", "w") as f:
+        json.dump(cache_list, f)
 
 
 def build_finished(app: Sphinx, exception: Exception):
-    outDir = app.outdir
-    config = app.config
-    outDirStatic = outDir + os.sep + "_static" + os.sep
-    files_to_cache = get_files_to_cache(outDir, app.config)
-    service_worker_path = (
-        os.path.dirname(__file__) + os.sep + "pwa_service_files" + os.sep + "sw.js"
-    )
-
-    # dumps our webmanifest
-    manifest["name"] = config["pwa_name"]
-    manifest["short_name"] = app.config.project
-    manifest["short_name"] = config["pwa_short_name"]
-    manifest["theme_color"] = config["pwa_theme_color"]
-    manifest["background_color"] = config["pwa_background_color"]
-    manifest["display"] = config["pwa_display"]
-
-    cache_name = "sphinx-app-" + str(random.randrange(10000, 99999))
-
-    # copies over our service worker
-    shutil.copyfile(
-        service_worker_path,
-        outDir + os.sep + "sw.js",
-    )
-
-    # code gen our cache name
-    service_worker = []
-    codegen_service_worker = ""
-
-    with open(outDir + os.sep + "sw.js", "r") as f:
-        service_worker = f.readlines()
-
-    with open(outDir + os.sep + "sw.js", "w") as f:
-        for line in service_worker:
-            codegen_service_worker = codegen_service_worker + line.replace(
-                "/* CODE-GEN CACHENAME */", cache_name
-            )
-
-        f.write(codegen_service_worker)
-
-    # icons is a required manifest attribute
-    if config["pwa_icons"] is None:
-        logger.error("Icons is required to be configured!")
-    else:
-        icons = []
-
-        for icon in config["pwa_icons"]:
-            if ".png" in icon[0]:
-                icons.append({"src": icon[0], "type": "image/png", "sizes": icon[1]})
-            elif ".jpg" in icon[0] or ".jpeg" in icon[0]:
-                icons.append({"src": icon[0], "type": "image/jpeg", "sizes": icon[1]})
-            elif ".svg" in icon[0]:
-                icons.append(
-                    {"src": icon[0], "type": "image/svg+xml", "sizes": icon[1]}
-                )
-            else:
-                logger.error("Specified image is unrecognized type:", icon[0])
-
-        manifest["icons"] = icons
-
-    # dumps our manifest
-    with open(outDirStatic + "app.webmanifest", "w") as f:
-        json.dump(manifest, f)
-
-    # dumps a json file with our cache
-    with open(outDirStatic + "cache.json", "w") as f:
-        json.dump(files_to_cache, f)
+    if exception is None:
+        generate_files(app, app.config)
 
 
 def html_page_context(
@@ -158,25 +114,27 @@ def html_page_context(
     context: Dict[str, Any],
     doctree: nodes.document,
 ) -> None:
-    if pagename == "index":
-        context[
-            "metatags"
-        ] += '<script>"serviceWorker"in navigator&&navigator.serviceWorker.register("sw.js").catch((e) => window.alert(e));</script>'
-        context["metatags"] += f'<link rel="manifest" href="_static/app.webmanifest"/>'
+    # todo possible cleanup
+    if doctree and pagename == app.config["root_doc"]:
+        context["metatags"] += (
+            '\n<script>"serviceWorker"in navigator&&navigator.serviceWorker.register("sw.js").catch(e=>window.alert(e));</script>'
+            + '\n<link rel="manifest" href="_static/app.webmanifest"/>'
+        )
 
-        if app.config["pwa_apple_icon"] is not None:
-            context[
-                "metatags"
-            ] += f'<link rel="apple-touch-icon" href="{app.config["pwa_apple_icon"]}">'
+        if icon := app.config["pwa_apple_icon"] is not None:
+            context["metatags"] += f'<link rel="apple-touch-icon" href="{icon}">'
 
 
 def setup(app: Sphinx) -> Dict[str, Any]:
+    # todo Do all these values need a rebuild?
     app.add_config_value("pwa_name", app.config.project, "html")
     app.add_config_value("pwa_short_name", app.config.project, "html")
     app.add_config_value("pwa_theme_color", "", "html")
     app.add_config_value("pwa_background_color", "", "html")
     app.add_config_value("pwa_display", "standalone", "html")
-    app.add_config_value("pwa_icons", None, "html")
+    app.add_config_value(
+        "pwa_icons", None, "html", [Dict]
+    )  # todo make sure this does something
     app.add_config_value("pwa_apple_icon", "", "html")
 
     app.connect("html-page-context", html_page_context)
