@@ -46,7 +46,7 @@ def get_cache(path: str, baseurl: str, exclude: List[str]) -> List[str]:
             rel_path = str(Path(entry.path).relative_to(path))
             # exclude all files that match exclude
             if any(e in rel_path for e in exclude):
-                pass
+                continue
 
             if entry.is_dir():
                 _file_list.extend(_walk(entry.path))
@@ -59,7 +59,7 @@ def get_cache(path: str, baseurl: str, exclude: List[str]) -> List[str]:
 
 
 def get_manifest(config: Dict[str, Any]) -> Dict[str, str]:
-    if config["pwa-icons"] is None:
+    if config["pwa_icons"] is None:
         raise ConfigError("Icons are required for PWAs!")
 
     icons = []
@@ -86,14 +86,14 @@ def get_manifest(config: Dict[str, Any]) -> Dict[str, str]:
 
 def generate_files(app: Sphinx, config: Dict[str, Any]) -> None:
     static_dir = Path(app.outdir, "_static")
-    cache_list = get_cache(app.outdir, config["html_baseurl"], ["_static", "sw.js"])
+    cache_list = get_cache(app.outdir, config["html_baseurl"], ["_sources", "sw.js"])
+
+    # Make the service worker and replace the cache name
     service_worker = (Path(__file__).parent / "pwa_service_files" / "sw.js").read_text()
-
-    logger.info(config["root_doc"])
-
-    service_worker.replace(
-        "{{% CACHE-NAME %}}", "sphinx-app" + str(random.randrange(10000, 100000))
+    service_worker = service_worker.replace(
+        "{{% CACHE-NAME %}}", "sphinx-app-" + str(random.randrange(10000, 100000))
     )
+    Path(app.outdir, "sw.js").write_text(service_worker)
 
     with open(static_dir / "app.webmanifest", "w") as f:
         json.dump(get_manifest(config), f)
@@ -132,9 +132,7 @@ def setup(app: Sphinx) -> Dict[str, Any]:
     app.add_config_value("pwa_theme_color", "", "html")
     app.add_config_value("pwa_background_color", "", "html")
     app.add_config_value("pwa_display", "standalone", "html")
-    app.add_config_value(
-        "pwa_icons", None, "html", [Dict]
-    )  # todo make sure this does something
+    app.add_config_value("pwa_icons", None, "html")
     app.add_config_value("pwa_apple_icon", "", "html")
 
     app.connect("html-page-context", html_page_context)
