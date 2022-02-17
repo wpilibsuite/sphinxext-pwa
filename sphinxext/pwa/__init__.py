@@ -80,13 +80,17 @@ def get_manifest(config: Dict[str, Any]) -> Dict[str, str]:
         "display": config["pwa_display"],
         "scope": "../",
         "start_url": f"../{config['root_doc']}.html",
-        "icons": [],
+        "icons": icons,
     }
 
 
 def generate_files(app: Sphinx, config: Dict[str, Any]) -> None:
     static_dir = Path(app.outdir, "_static")
-    cache_list = get_cache(app.outdir, config["html_baseurl"], ["_sources", "sw.js"])
+    cache_list = get_cache(
+        app.outdir,
+        config["html_baseurl"],
+        ["_sources", "sw.js"] + config["pwa_exclude_cache"],
+    )
 
     # Make the service worker and replace the cache name
     service_worker = (Path(__file__).parent / "pwa_service_files" / "sw.js").read_text()
@@ -133,6 +137,7 @@ def setup(app: Sphinx) -> Dict[str, Any]:
     app.add_config_value("pwa_background_color", "", "html")
     app.add_config_value("pwa_display", "standalone", "html")
     app.add_config_value("pwa_icons", None, "html")
+    app.add_config_value("pwa_exclude_cache", [], "html")
     app.add_config_value("pwa_apple_icon", "", "html")
 
     app.connect("html-page-context", html_page_context)
