@@ -10,9 +10,8 @@ import random
 from sphinx.application import Sphinx
 from sphinx.errors import ConfigError
 from docutils import nodes
-from urllib.parse import urljoin, urlparse, urlunparse
+from urllib.parse import urljoin
 from sphinx.util import logging
-
 
 logger = logging.getLogger(__name__)
 
@@ -23,21 +22,15 @@ def get_cache(path: str, baseurl: str, exclude: List[str]) -> List[str]:
     # this means that we cannot accurately cache resources that are in PRs because RTD does not give us
     # the url
     # readthedocs uses html_baseurl for sphinx > 1.8
-    if baseurl is not None:
-        parse_result = urlparse(url)
-
-        # enables RTD multilanguage support
-        if os.getenv("READTHEDOCS"):
-            parse_result.path = (
-                os.getenv("READTHEDOCS_LANGUAGE")
-                + "/"
-                + os.getenv("READTHEDOCS_VERSION")
-            )
-
-        url = urlunparse(parse_result)
-    elif baseurl is None:
+    # enables RTD multilanguage support (todo fixup comments and make sure this still works)
+    if baseurl is None:
         logger.warning(
             "html_baseurl is not configured. This can be ignored if deployed in RTD environments."
+        )
+    elif os.getenv("READTHEDOCS"):
+        url = urljoin(
+            url,
+            os.getenv("READTHEDOCS_LANGUAGE") + "/" + os.getenv("READTHEDOCS_VERSION"),
         )
 
     def _walk(_path: str) -> List[str]:
