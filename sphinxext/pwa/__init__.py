@@ -180,10 +180,12 @@ def html_page_context(
                 const queryString = window.location.search;
                 const urlParams = new URLSearchParams(queryString);
                 // Check that service workers are supported
-                if ('serviceWorker' in navigator && urlParams.has('pwa')) {
+                if ('serviceWorker' in navigator) {
                     // Use the window load event to keep the page load performant
                     window.addEventListener('load', () => {
-                        navigator.serviceWorker.register('/service-worker.js');
+                        if (urlParams.has('pwa')) {
+                            navigator.serviceWorker.register('service-worker.js');
+                        }
                 });
             }
             </script>
