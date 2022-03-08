@@ -144,7 +144,7 @@ def html_page_context(
                     // Use the window load event to keep the page load performant
                     window.addEventListener('load', () => {
                         if (urlParams.has('pwa')) {
-                            navigator.serviceWorker.register('service-worker.js');
+                            navigator.serviceWorker.register('sw.js');
                         }
                 });
             }
