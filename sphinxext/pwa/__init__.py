@@ -187,6 +187,7 @@ def html_page_context(
                 });
             }
             </script>
+            <link rel="manifest" href="_static/app.webmanifest"/>
             """
 
         if icon := app.config["pwa_apple_icon"] is not None:
