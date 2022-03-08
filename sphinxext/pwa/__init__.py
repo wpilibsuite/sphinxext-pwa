@@ -5,7 +5,9 @@ import random
 import subprocess
 from pathlib import Path
 from sys import stderr
-from typing import Any, Dict, List
+from typing import Any
+from typing import Dict
+from typing import List
 from urllib.parse import urljoin
 
 from docutils import nodes
