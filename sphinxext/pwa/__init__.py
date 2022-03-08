@@ -48,9 +48,8 @@ def generate_files(app: Sphinx, config: Dict[str, Any]) -> None:
     static_dir = Path(app.outdir, "_static")
 
     # Make the service worker and replace the cache name
-    service_worker = (
-        Path(__file__).parent / "pwa_service_files" / "workbox-config.js"
-    ).read_text()
+    service_worker = (Path(__file__).parent / "pwa_service_files" /
+                      "workbox-config.js").read_text()
     Path(app.outdir, "workbox-config.js").write_text(service_worker)
 
     with open(static_dir / "app.webmanifest", "w") as f:
@@ -61,7 +60,8 @@ def does_node_exist():
     success = subprocess.run(["node", "-v"], stdout=subprocess.PIPE)
 
     if success.returncode != 0:
-        logger.warning("Unable to run Node. Is it installed? Running in Online Mode.")
+        logger.warning(
+            "Unable to run Node. Is it installed? Running in Online Mode.")
         return False
     else:
         return True
@@ -116,9 +116,7 @@ def html_page_context(
 ) -> None:
     # todo possible cleanup
     if doctree and pagename == app.config["root_doc"]:
-        context[
-            "metatags"
-        ] += """
+        context["metatags"] += """
             <script>
                 const queryString = window.location.search;
                 const urlParams = new URLSearchParams(queryString);
@@ -136,7 +134,8 @@ def html_page_context(
             """
 
         if icon := app.config["pwa_apple_icon"] is not None:
-            context["metatags"] += f'<link rel="apple-touch-icon" href="{icon}">'
+            context[
+                "metatags"] += f'<link rel="apple-touch-icon" href="{icon}">'
 
 
 def setup(app: Sphinx) -> Dict[str, Any]:
