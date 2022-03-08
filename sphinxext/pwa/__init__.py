@@ -59,7 +59,8 @@ def does_node_exist():
     success = subprocess.run(["node", "-v"], stdout=subprocess.PIPE)
 
     if success.returncode != 0:
-        logger.warning("Unable to run Node. Is it installed? Running in Online Mode.")
+        logger.warning(
+            "Unable to run Node. Is it installed? Running in Online Mode.")
         return False
     else:
         return True
