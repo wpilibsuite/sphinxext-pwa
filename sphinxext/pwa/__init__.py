@@ -1,16 +1,16 @@
-import subprocess
-from sys import stderr
-from typing import Any, Dict, List
-from pathlib import Path
+import json
 import mimetypes
 import os
-import json
 import random
+import subprocess
+from pathlib import Path
+from sys import stderr
+from typing import Any, Dict, List
+from urllib.parse import urljoin
 
+from docutils import nodes
 from sphinx.application import Sphinx
 from sphinx.errors import ConfigError
-from docutils import nodes
-from urllib.parse import urljoin
 from sphinx.util import logging
 
 logger = logging.getLogger(__name__)
