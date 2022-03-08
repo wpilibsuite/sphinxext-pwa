@@ -72,7 +72,7 @@ def get_manifest(config: Dict[str, Any]) -> Dict[str, str]:
         "background_color": config["pwa_background_color"],
         "display": config["pwa_display"],
         "scope": "../",
-        "start_url": f"../{config['root_doc']}.html",
+        "start_url": f"../{config['root_doc']}.html?pwa",
         "icons": icons,
     }
 
