@@ -79,7 +79,7 @@ def does_workbox_exist():
     if success.returncode != 0 and success.returncode != 2:
         logger.info("Workbox is not installed. Attempting installation!")
         install_result = subprocess.run(
-            ["npm", "install", "workbox-cli"],
+            ["npm", "install", "workbox-cli", "--global"],
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
             text=True,
@@ -118,7 +118,7 @@ def build_finished(app: Sphinx, exception: Exception):
 
                 if success.returncode != 0:
                     logger.error(
-                        "Failed to generate service worker files", success.stdout
+                        "Failed to generate service worker files"
                     )
                 else:
                     logger.info("Successfully generated service worker files!")
