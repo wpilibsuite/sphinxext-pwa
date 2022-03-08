@@ -79,7 +79,7 @@ def does_workbox_exist():
     if success.returncode != 0 and success.returncode != 2:
         logger.info("Workbox is not installed. Attempting installation!")
         install_result = subprocess.check_call(
-            ["npm", "install", "workbox-cli", "--global"],
+            "npm install workbox-cli --global",
             shell=True,
         )
 
