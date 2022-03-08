@@ -82,6 +82,7 @@ def does_workbox_exist():
             ["npm", "install", "workbox-cli", "--global"],
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
+            universal_newlines=True,
             text=True,
             shell=True,
         )
