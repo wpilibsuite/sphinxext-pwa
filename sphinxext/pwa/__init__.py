@@ -88,7 +88,7 @@ def does_workbox_exist():
 
         if install_result.returncode != 0:
             logger.error(
-                "Failed to install workbox-cli with error", install_result.stderr
+                "Failed to install workbox-cli with error", install_result.stdout
             )
             return False
         else:
