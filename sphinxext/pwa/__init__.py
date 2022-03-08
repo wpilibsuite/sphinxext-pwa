@@ -98,21 +98,11 @@ def build_finished(app: Sphinx, exception: Exception):
                 os.chdir(app.outdir)
                 logger.info("Generating service worker files!")
 
-                success = subprocess.run(
-                    ["workbox", "generateSW", "workbox-config.js"],
-                    stderr=subprocess.PIPE,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    text=True,
+                success = subprocess.check_call(
+                    "workbox generateSW workbox-config.js",
                     shell=True,
                 )
-
-                if success.returncode != 0:
-                    logger.error(
-                        "Failed to generate service worker files"
-                    )
-                else:
-                    logger.info("Successfully generated service worker files!")
+                logger.info("Successfully generated service worker files!")
 
 
 def html_page_context(
