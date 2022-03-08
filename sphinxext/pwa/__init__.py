@@ -16,41 +16,6 @@ from sphinx.util import logging
 logger = logging.getLogger(__name__)
 
 
-def get_cache(path: str, baseurl: str, exclude: List[str]) -> List[str]:
-    url = baseurl
-    # we have to use absolute urls in our cache resource, because fetch will return an absolute url
-    # this means that we cannot accurately cache resources that are in PRs because RTD does not give us
-    # the url
-    # readthedocs uses html_baseurl for sphinx > 1.8
-    # enables RTD multilanguage support (todo fixup comments and make sure this still works)
-    if baseurl is None:
-        logger.warning(
-            "html_baseurl is not configured. This can be ignored if deployed in RTD environments."
-        )
-    elif os.getenv("READTHEDOCS"):
-        url = urljoin(
-            url,
-            os.getenv("READTHEDOCS_LANGUAGE") + "/" + os.getenv("READTHEDOCS_VERSION"),
-        )
-
-    def _walk(_path: str) -> List[str]:
-        _file_list = []
-        for entry in os.scandir(_path):
-            rel_path = str(Path(entry.path).relative_to(path))
-            # exclude all files that match exclude
-            if any(e in rel_path for e in exclude):
-                continue
-
-            if entry.is_dir():
-                _file_list.extend(_walk(entry.path))
-            else:
-                _file_list.append(urljoin(url, rel_path))
-
-        return _file_list
-
-    return _walk(path)
-
-
 def get_manifest(config: Dict[str, Any]) -> Dict[str, str]:
     if config["pwa_icons"] is None:
         raise ConfigError("Icons are required for PWAs!")
@@ -79,11 +44,6 @@ def get_manifest(config: Dict[str, Any]) -> Dict[str, str]:
 
 def generate_files(app: Sphinx, config: Dict[str, Any]) -> None:
     static_dir = Path(app.outdir, "_static")
-    cache_list = get_cache(
-        app.outdir,
-        config["html_baseurl"],
-        ["_sources", "sw.js"] + config["pwa_exclude_cache"],
-    )
 
     # Make the service worker and replace the cache name
     service_worker = (
