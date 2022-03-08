@@ -1,3 +1,5 @@
+import subprocess
+from sys import stderr
 from typing import Any, Dict, List
 from pathlib import Path
 import mimetypes
@@ -84,22 +86,82 @@ def generate_files(app: Sphinx, config: Dict[str, Any]) -> None:
     )
 
     # Make the service worker and replace the cache name
-    service_worker = (Path(__file__).parent / "pwa_service_files" / "sw.js").read_text()
-    service_worker = service_worker.replace(
-        "{{% CACHE-NAME %}}", "sphinx-app-" + str(random.randrange(10000, 100000))
-    )
-    Path(app.outdir, "sw.js").write_text(service_worker)
+    service_worker = (
+        Path(__file__).parent / "pwa_service_files" / "workbox-config.js"
+    ).read_text()
+    Path(app.outdir, "workbox-config.js").write_text(service_worker)
 
     with open(static_dir / "app.webmanifest", "w") as f:
         json.dump(get_manifest(config), f)
 
-    with open(static_dir / "cache.json", "w") as f:
-        json.dump(cache_list, f)
+
+def does_node_exist():
+    success = subprocess.run(["node", "-v"], stdout=subprocess.PIPE)
+
+    if success.returncode != 0:
+        logger.warning("Unable to run Node. Is it installed? Running in Online Mode.")
+        return False
+    else:
+        return True
+
+
+# verify workbox exists or is installed
+# if it is not, install it
+def does_workbox_exist():
+    success = subprocess.run(
+        ["workbox"],
+        shell=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    if success.returncode != 0 and success.returncode != 2:
+        logger.info("Workbox is not installed. Attempting installation!")
+        install_result = subprocess.run(
+            ["npm", "install", "workbox-cli"],
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,
+            shell=True,
+        )
+
+        if install_result.returncode != 0:
+            logger.error(
+                "Failed to install workbox-cli with error", install_result.stderr
+            )
+            return False
+        else:
+            logger.info("Successfully installed workbox!")
+            return True
+    else:
+        return True
 
 
 def build_finished(app: Sphinx, exception: Exception):
     if exception is None:
         generate_files(app, app.config)
+
+        if does_node_exist():
+            if does_workbox_exist():
+                os.chdir(app.outdir)
+                logger.info("Generating service worker files!")
+
+                success = subprocess.run(
+                    ["workbox", "generateSW", "workbox-config.js"],
+                    stderr=subprocess.PIPE,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    text=True,
+                    shell=True,
+                )
+
+                if success.returncode != 0:
+                    logger.error(
+                        "Failed to generate service worker files", success.stdout
+                    )
+                else:
+                    logger.info("Successfully generated service worker files!")
 
 
 def html_page_context(
@@ -111,10 +173,21 @@ def html_page_context(
 ) -> None:
     # todo possible cleanup
     if doctree and pagename == app.config["root_doc"]:
-        context["metatags"] += (
-            '\n<script>"serviceWorker"in navigator&&navigator.serviceWorker.register("sw.js").catch(e=>window.alert(e));</script>'
-            + '\n<link rel="manifest" href="_static/app.webmanifest"/>'
-        )
+        context[
+            "metatags"
+        ] += """
+            <script>
+                const queryString = window.location.search;
+                const urlParams = new URLSearchParams(queryString);
+                // Check that service workers are supported
+                if ('serviceWorker' in navigator && urlParams.has('pwa')) {
+                    // Use the window load event to keep the page load performant
+                    window.addEventListener('load', () => {
+                        navigator.serviceWorker.register('/service-worker.js');
+                });
+            }
+            </script>
+            """
 
         if icon := app.config["pwa_apple_icon"] is not None:
             context["metatags"] += f'<link rel="apple-touch-icon" href="{icon}">'

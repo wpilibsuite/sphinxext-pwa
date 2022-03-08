@@ -1,1 +1,1 @@
-include sphinxext/pwa/pwa_service_files/sw.js
+include sphinxext/pwa/pwa_service_files/workbox-config.js

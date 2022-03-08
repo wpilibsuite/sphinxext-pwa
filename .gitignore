@@ -177,6 +177,11 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# Node stuff:
+node_modules/
+package.json
+package-lock.json
+
 # Flask stuff:
 instance/
 .webassets-cache
