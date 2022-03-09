@@ -42,15 +42,15 @@ def get_manifest(config: Dict[str, Any]) -> Dict[str, str]:
 
 
 def generate_files(app: Sphinx, config: Dict[str, Any]) -> None:
-    static_dir = Path(app.outdir, "_static")
+    outdir = Path(app.outdir)
 
     # Make the service worker and replace the cache name
     service_worker = (
         Path(__file__).parent / "pwa_service_files" / "workbox-config.js"
     ).read_text()
-    Path(app.outdir, "workbox-config.js").write_text(service_worker)
+    Path(outdir, "workbox-config.js").write_text(service_worker)
 
-    with open(static_dir / "app.webmanifest", "w") as f:
+    with open(outdir / "app.webmanifest", "w") as f:
         json.dump(get_manifest(config), f)
 
 
@@ -134,7 +134,7 @@ def html_page_context(
                 });
             }
             </script>
-            <link rel="manifest" href="_static/app.webmanifest"/>
+            <link rel="manifest" href="app.webmanifest"/>
             """
 
         if icon := app.config["pwa_apple_icon"] is not None:
