@@ -1,5 +1,6 @@
 sphinx
 wheel==0.34.2
-pytest==5.4.3
+pytest==7.0.1
+bs4
 beautifulsoup4==4.9.1
 setuptools==47.3.1
