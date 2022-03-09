@@ -38,7 +38,7 @@ The extension will automatically prepopulate data for the `manifest` that is req
 pwa_icons = [["_static/myicon.webp", "48x48"]]
 ```
 
-This should be all that is necessary to get your PWA functional. There is some extra customizability listed below.
+This extension does require NodeJS >= 16. If you are deploying on ReadTheDocs, you need to add or customize the build config as shown [here](https://docs.readthedocs.io/en/stable/config-file/v2.html). Once this is done, that should be all that is required to turn your Sphinx website into a Progressive Web Application!
 
 ## Configuration
 
