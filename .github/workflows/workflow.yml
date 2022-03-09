@@ -20,6 +20,30 @@ jobs:
     - uses: psf/black@22.1.0
       with:
         black_args: ". --check"
+  test-extension:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.7',  '3.8', '3.9', '3.10' 'pypy3']
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          set -xe
+          python -VV
+          python -m site
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r dev-requirements.txt
+      - name: Install Package
+        run: |
+          python -m pip install .
+      - name: Run Tests for ${{ matrix.python-version }}
+        run: |
+          python -m pytest -vv
   pypi-release:
     needs: check
     runs-on: ubuntu-latest

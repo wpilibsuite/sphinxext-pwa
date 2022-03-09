@@ -27,11 +27,19 @@ def test_manifest_generated(content):
     file = (content.outdir / "app.webmanifest").read_text()
 
     if file is None:
-        print("File is none")
         assert False
 
     if manifest not in file:
-        print("file_json is not valid!")
+        assert False
+
+    assert True
+
+
+@pytest.mark.sphinx("html", testroot="manifest-generation")
+def test_serviceworker_generated(content):
+    file = (content.outdir / "sw.js").read_text()
+
+    if file is None:
         assert False
 
     assert True
