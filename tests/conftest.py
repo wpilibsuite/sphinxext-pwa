@@ -27,9 +27,22 @@ def _meta_tags(content, subdir=None):
     return BeautifulSoup(c, "html.parser").find_all("meta")
 
 
+def _get_link_tags(content, subdir=None):
+    if subdir is None:
+        c = (content.outdir / "index.html").read_text()
+    else:
+        c = (content.outdir / subdir / "index.html").read_text()
+    return BeautifulSoup(c, "html.parser").find_all("link")
+
+
 @pytest.fixture()
 def meta_tags(content):
     return _meta_tags(content)
+
+
+@pytest.fixture()
+def get_link_tags(content):
+    return _get_link_tags(content)
 
 
 def pytest_configure(config):
