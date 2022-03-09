@@ -22,8 +22,8 @@ with open("README.md", "r", encoding="utf-8") as readme:
 setuptools.setup(
     name="sphinxext-pwa",
     version=version,
-    author="Itay Ziv",
-    author_email="itay220204@gmail.com",
+    author="WPILib",
+    author_email="developers@wpilib.org",
     description="Sphinx Extension to turn Sphinx websites into Progressive Web Applications",
     long_description=long_description,
     long_description_content_type="text/markdown",
