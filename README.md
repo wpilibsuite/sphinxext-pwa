@@ -10,10 +10,9 @@ This technology is highly experimental and volatile. Individuals using this exte
 - completely breaking your sphinx website
 
 ## Current Issues
-- iOS is not working
-  - iOS lazy loads the `indexeddb` storage. This means `fetch` requests for html files cannot grab `indexeddb`, because `indexeddb` is not open until DOM loads.
-- Resources begin caching on page load
-  - We need a helper script that begins the cache if the detected environment is PWA.
+- iOS is only partially working
+  - For some weird reason, the service worker is getting killed and not being reactivated consistently.
+
 See [issues](https://github.com/ItayZiv/sphinxext-pwa/issues/) for more information.
 
 ## Introduction
@@ -54,16 +53,14 @@ PWAs have *a lot* of configuration. For details on accepted inputs, see [the Moz
 | `pwa_theme_color` | None                            | String containing HEX color code |
 | `pwa_display`     | "standalone"                    | String                           |
 | `pwa_icons`       | MANDATORY                       | [["image location", "sizes"]]    |
+| `pwa_online_only` | False                           | Boolean                          |
 
 ## Caveats
 
 **Supported Browsers:** Chrome (Desktop & Mobile), Firefox (Mobile), Safari (iOS). Only the standard, non-beta, non-light versions of these browsers are supported.
 
-**Supported OSes:** iOS >= 15, Safari versions 10-14.4 (excluding 14.5-14.8 due to a indexedDB bug) should also work. Android >= 6.
-  - Note: iOS is currently not functional due to their implementation of `indexeddb` lazy loading. We are planning to implement a fix for this soon.
+**Supported OSes:** Android >= 6. iOS >= 14.2
 
 **Installation Time for Offline to Work**: It depends on the website, but a 160MB application takes on average 15 minutes to enable offline support. This also changes depending on the device specific implementation.
-
-**Push Updates**: Because the cache is unique with every deploy, this initializes a redeploy of the entire cache.
 
 **Cache Timeouts**: Whenever the user clears their browser cache, it will purge the assets. It is undetermined at this time if it will retrigger the download of the entire cache. Some users have space saving applications that may interfere with this.

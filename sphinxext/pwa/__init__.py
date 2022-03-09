@@ -1,9 +1,10 @@
+import subprocess
+from sys import stderr
 from typing import Any, Dict, List
 from pathlib import Path
 import mimetypes
 import os
 import json
-import random
 
 from sphinx.application import Sphinx
 from sphinx.errors import ConfigError
@@ -12,41 +13,6 @@ from urllib.parse import urljoin
 from sphinx.util import logging
 
 logger = logging.getLogger(__name__)
-
-
-def get_cache(path: str, baseurl: str, exclude: List[str]) -> List[str]:
-    url = baseurl
-    # we have to use absolute urls in our cache resource, because fetch will return an absolute url
-    # this means that we cannot accurately cache resources that are in PRs because RTD does not give us
-    # the url
-    # readthedocs uses html_baseurl for sphinx > 1.8
-    # enables RTD multilanguage support (todo fixup comments and make sure this still works)
-    if baseurl is None:
-        logger.warning(
-            "html_baseurl is not configured. This can be ignored if deployed in RTD environments."
-        )
-    elif os.getenv("READTHEDOCS"):
-        url = urljoin(
-            url,
-            os.getenv("READTHEDOCS_LANGUAGE") + "/" + os.getenv("READTHEDOCS_VERSION"),
-        )
-
-    def _walk(_path: str) -> List[str]:
-        _file_list = []
-        for entry in os.scandir(_path):
-            rel_path = str(Path(entry.path).relative_to(path))
-            # exclude all files that match exclude
-            if any(e in rel_path for e in exclude):
-                continue
-
-            if entry.is_dir():
-                _file_list.extend(_walk(entry.path))
-            else:
-                _file_list.append(urljoin(url, rel_path))
-
-        return _file_list
-
-    return _walk(path)
 
 
 def get_manifest(config: Dict[str, Any]) -> Dict[str, str]:
@@ -70,36 +36,74 @@ def get_manifest(config: Dict[str, Any]) -> Dict[str, str]:
         "background_color": config["pwa_background_color"],
         "display": config["pwa_display"],
         "scope": "../",
-        "start_url": f"../{config['root_doc']}.html",
+        "start_url": f"../{config['root_doc']}.html?pwa",
         "icons": icons,
     }
 
 
 def generate_files(app: Sphinx, config: Dict[str, Any]) -> None:
     static_dir = Path(app.outdir, "_static")
-    cache_list = get_cache(
-        app.outdir,
-        config["html_baseurl"],
-        ["_sources", "sw.js"] + config["pwa_exclude_cache"],
-    )
 
     # Make the service worker and replace the cache name
-    service_worker = (Path(__file__).parent / "pwa_service_files" / "sw.js").read_text()
-    service_worker = service_worker.replace(
-        "{{% CACHE-NAME %}}", "sphinx-app-" + str(random.randrange(10000, 100000))
-    )
-    Path(app.outdir, "sw.js").write_text(service_worker)
+    service_worker = (
+        Path(__file__).parent / "pwa_service_files" / "workbox-config.js"
+    ).read_text()
+    Path(app.outdir, "workbox-config.js").write_text(service_worker)
 
     with open(static_dir / "app.webmanifest", "w") as f:
         json.dump(get_manifest(config), f)
 
-    with open(static_dir / "cache.json", "w") as f:
-        json.dump(cache_list, f)
+
+def does_node_exist():
+    success = subprocess.run(["node", "-v"], stdout=subprocess.PIPE)
+
+    if success.returncode != 0:
+        logger.warning("Unable to run Node. Is it installed? Running in Online Mode.")
+        return False
+    else:
+        return True
+
+
+# verify workbox exists or is installed
+# if it is not, install it
+def does_workbox_exist():
+    success = subprocess.run(
+        ["workbox"],
+        shell=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    if success.returncode != 0 and success.returncode != 2:
+        logger.info("Workbox is not installed. Attempting installation!")
+        install_result = subprocess.check_call(
+            "npm install workbox-cli --global",
+            shell=True,
+        )
+
+        logger.info("Successfully installed workbox!")
+        return True
+    else:
+        return True
 
 
 def build_finished(app: Sphinx, exception: Exception):
     if exception is None:
         generate_files(app, app.config)
+
+        if does_node_exist() and not app.config["pwa_online_only"]:
+            if does_workbox_exist():
+                os.chdir(app.outdir)
+                logger.info("Generating service worker files!")
+
+                success = subprocess.check_call(
+                    "workbox generateSW workbox-config.js",
+                    shell=True,
+                )
+                logger.info("Successfully generated service worker files!")
+        else:
+            logger.info("Running in Online-Only mode!")
 
 
 def html_page_context(
@@ -111,10 +115,27 @@ def html_page_context(
 ) -> None:
     # todo possible cleanup
     if doctree and pagename == app.config["root_doc"]:
-        context["metatags"] += (
-            '\n<script>"serviceWorker"in navigator&&navigator.serviceWorker.register("sw.js").catch(e=>window.alert(e));</script>'
-            + '\n<link rel="manifest" href="_static/app.webmanifest"/>'
-        )
+        context[
+            "metatags"
+        ] += """
+            <script>
+                const queryString = window.location.search;
+                const urlParams = new URLSearchParams(queryString);
+                // Check that service workers are supported
+                if ('serviceWorker' in navigator) {
+                    // Use the window load event to keep the page load performant
+                    window.addEventListener('load', () => {
+                        if (urlParams.has('pwa')) {
+                            console.log("Installing PWA!");
+                            navigator.serviceWorker.register('sw.js');
+                        } else {
+                            console.log("Standalone mode not detected!");
+                        }
+                });
+            }
+            </script>
+            <link rel="manifest" href="_static/app.webmanifest"/>
+            """
 
         if icon := app.config["pwa_apple_icon"] is not None:
             context["metatags"] += f'<link rel="apple-touch-icon" href="{icon}">'
@@ -130,6 +151,7 @@ def setup(app: Sphinx) -> Dict[str, Any]:
     app.add_config_value("pwa_icons", None, "html")
     app.add_config_value("pwa_exclude_cache", [], "html")
     app.add_config_value("pwa_apple_icon", "", "html")
+    app.add_config_value("pwa_online_only", False, "html")
 
     app.connect("html-page-context", html_page_context)
     app.connect("build-finished", build_finished)
