@@ -45,7 +45,7 @@ jobs:
         run: |
           python -m pytest -vv
   pypi-release:
-    needs: check
+    needs: test-extension
     runs-on: ubuntu-latest
     if: contains(github.ref, 'refs/tags/') && github.repository_owner	== 'wpilibsuite'
     steps:
