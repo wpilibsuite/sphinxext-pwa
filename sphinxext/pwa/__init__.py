@@ -137,7 +137,7 @@ def html_page_context(
             <link rel="manifest" href="app.webmanifest"/>
             """
 
-        if icon := app.config["pwa_apple_icon"] is not None:
+        if (icon := app.config["pwa_apple_icon"]) is not None:
             context["metatags"] += f'<link rel="apple-touch-icon" href="{icon}">'
 
 
