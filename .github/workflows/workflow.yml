@@ -59,8 +59,9 @@ jobs:
           python-version: '3.8'
       - name: Install Dependencies
         run: |
+          sudo apt-get install nodejs npm
           python -m pip install --upgrade pip
-          pip install -r ./dev-requirements.txt
+          python -m pip install -r test-requirements.txt
       - name: Build PyPI Wheel
         run: |
           python setup.py sdist
