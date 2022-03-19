@@ -6,6 +6,9 @@ import mimetypes
 import os
 import json
 
+from sphinx.builders.dirhtml import DirectoryHTMLBuilder
+from sphinx.builders.html import StandaloneHTMLBuilder
+from sphinx.builders.linkcheck import CheckExternalLinksBuilder
 from sphinx.application import Sphinx
 from sphinx.errors import ConfigError
 from docutils import nodes
@@ -13,6 +16,8 @@ from urllib.parse import urljoin
 from sphinx.util import logging
 
 logger = logging.getLogger(__name__)
+
+READTHEDOCS_BUILDERS = ["readthedocs", "readthedocsdirhtml"]
 
 
 def get_manifest(config: Dict[str, Any]) -> Dict[str, str]:
@@ -58,7 +63,9 @@ def does_node_exist():
     success = subprocess.run(["node", "-v"], stdout=subprocess.PIPE)
 
     if success.returncode != 0:
-        logger.warning("Unable to run Node. Is it installed? Running in Online Mode.")
+        logger.warning(
+            "sphinxext-pwa: Unable to run Node. Is it installed? Running in Online Mode."
+        )
         return False
     else:
         return True
@@ -76,19 +83,34 @@ def does_workbox_exist():
     )
 
     if success.returncode != 0 and success.returncode != 2:
-        logger.info("Workbox is not installed. Attempting installation!")
+        logger.info("sphinxext-pwa: Workbox is not installed. Attempting installation!")
         install_result = subprocess.check_call(
             "npm install workbox-cli --global",
             shell=True,
         )
 
-        logger.info("Successfully installed workbox!")
+        logger.info("sphinxext-pwa: Successfully installed workbox!")
         return True
     else:
         return True
 
 
 def build_finished(app: Sphinx, exception: Exception):
+    if isinstance(app.builder, CheckExternalLinksBuilder):
+        logger.info(
+            "sphinxext-pwa: Redirect generation skipped for linkcheck builders."
+        )
+        return
+
+    if (
+        type(app.builder) not in (StandaloneHTMLBuilder, DirectoryHTMLBuilder)
+        and app.builder.name not in READTHEDOCS_BUILDERS
+    ):
+        logger.info(
+            "sphinxext-pwa: Manifest generation skipped for unsupported builders. Supported builders: html, dirhtml, readthedocs, readthedocsdirhtml."
+        )
+        return
+
     if exception is None:
         generate_files(app, app.config)
 
@@ -101,9 +123,11 @@ def build_finished(app: Sphinx, exception: Exception):
                     "workbox generateSW workbox-config.js",
                     shell=True,
                 )
-                logger.info("Successfully generated service worker files!")
+                logger.info(
+                    "sphinxext-pwa: Successfully generated service worker files!"
+                )
         else:
-            logger.info("Running in Online-Only mode!")
+            logger.info("sphinxext-pwa: Running in Online-Only mode!")
 
 
 def html_page_context(
